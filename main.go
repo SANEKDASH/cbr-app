@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
+	"strings"
+	"strconv"
 	"io"
 	"log"
 	"net/http"
@@ -22,6 +23,19 @@ type currencyAPIInput struct {
 	Date string `json:"date"`
 }
 
+type currencyAPIOutput struct {
+	Service string `json:"service"`
+	Data map[string]float64 `json:"data"`
+
+}
+
+func NewCurrencyAPIOutput() *currencyAPIOutput {
+	return &currencyAPIOutput{
+		Service: "currency",
+		Data:    make(map[string]float64),
+	}
+}
+
 func appInfoHandler(w http.ResponseWriter, req *http.Request) {
 	info := appInfo{Version: "0.1.0", Service: "currency", Author: "a.dashchynski"}
 
@@ -33,19 +47,19 @@ func appInfoHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-type Valute struct {
+type CbrValute struct {
 	ID       string `xml:"ID,attr"`
 	CharCode string `xml:"CharCode"`
 	Value    string `xml:"Value"`
 	Nominal  string `xml:"Nominal"`
 }
 
-type ValCurs struct {
+type CbrValCurs struct {
 	XMLName xml.Name `xml:"ValCurs"`
-	Valutes [] Valute `xml:"Valute"`
+	Valutes [] CbrValute `xml:"Valute"`
 }
 
-func findCurrency(curs ValCurs, valName string) *Valute {
+func findCurrency(curs CbrValCurs, valName string) *CbrValute {
 	for _, v := range curs.Valutes {
 		if v.CharCode == valName {
 			return &v
@@ -55,7 +69,7 @@ func findCurrency(curs ValCurs, valName string) *Valute {
 	return nil
 }
 
-func getCbrCurrencyXMLBody(curr *currencyAPIInput) ([]byte, error) {
+func getCbrCurrencyXMLBody(curr currencyAPIInput) ([]byte, error) {
 	// need to add date
 	endpoint := "http://www.cbr.ru/scripts/XML_daily.asp?date_req="
 
@@ -82,25 +96,35 @@ func getCbrCurrencyXMLBody(curr *currencyAPIInput) ([]byte, error) {
 	return body, nil
 }
 
-func getCbrCurrencyValues(curr *currencyAPIInput) string {
+func fillCurrencyAPIOutput(out *currencyAPIOutput, curs CbrValCurs) {
+	for _, v := range curs.Valutes {
+		val, err := strconv.ParseFloat(strings.ReplaceAll(v.Value, ",", "."), 64)
+		if err != nil {
+			log.Printf("failed to get value of currency: %v", err)
+			return
+		}
+		out.Data[v.CharCode] = val
+ 	}
+}
+
+func getCbrCurrencyValues(curr currencyAPIInput) (CbrValCurs, error) {
 	body, err := getCbrCurrencyXMLBody(curr)
 	if err != nil {
 		log.Printf("failed to get CBR currency XML body: %v\n")
-		return ""
+		return CbrValCurs{}, err
 	}
 
-	var curs ValCurs
+	var curs CbrValCurs
 	decoder := xml.NewDecoder(bytes.NewReader(body))
 	decoder.CharsetReader = charset.NewReaderLabel
 
 	err = decoder.Decode(&curs)
 	if err != nil {
 		log.Printf("failed to decode XML: %v\n", err)
-		return ""
+		return CbrValCurs{}, err
 	}
 
-	valute := findCurrency(curs, "USD")
-	return valute.Value
+	return curs, nil
 }
 
 func appCurrencyInfoHandler(w http.ResponseWriter, req *http.Request) {
@@ -112,9 +136,20 @@ func appCurrencyInfoHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	values := getCbrCurrencyValues(&input)
-}
+	values, err := getCbrCurrencyValues(input)
+	if err != nil {
+		http.Error(w, "failed to get currency values", http.StatusNoContent)
+		return
+	}
 
+	output := NewCurrencyAPIOutput()
+	fillCurrencyAPIOutput(output, values)
+
+	if err := json.NewEncoder(w).Encode(output); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return;
+	}
+}
 
 func main() {
 	http.HandleFunc("/info", appInfoHandler)
