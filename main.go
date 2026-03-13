@@ -7,17 +7,20 @@ import (
 	"strings"
 	"strconv"
 	"io"
+	"os"
 	"fmt"
 	"log"
 	"net/http"
 	"golang.org/x/net/html/charset"
 )
 
-type appInfo struct {
+type infoAPIOutput struct {
 	Version string `json:"version"`
 	Service string `json:"service"`
 	Author string `json:"author"`
 }
+
+var appInfo infoAPIOutput
 
 type currencyAPIInput struct {
 	Currency string `json:"currency"`
@@ -38,11 +41,8 @@ func NewCurrencyAPIOutput() *currencyAPIOutput {
 }
 
 func appInfoHandler(w http.ResponseWriter, req *http.Request) {
-	info := appInfo{Version: "0.1.0", Service: "currency", Author: "a.dashchynski"}
-
 	w.Header().Set("Content-Type", "application/json")
-
-	if err := json.NewEncoder(w).Encode(info); err != nil {
+	if err := json.NewEncoder(w).Encode(appInfo); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return;
 	}
@@ -173,7 +173,21 @@ func appCurrencyInfoHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = ":8000"
+	} else {
+		port = fmt.Sprintf(":%s", port)
+	}
+
+	author := os.Getenv("AUTHOR")
+	version := os.Getenv("VERSION")
+
+	appInfo.Author = author
+	appInfo.Version = version
+	appInfo.Service = "currency"
+
 	http.HandleFunc("/info", appInfoHandler)
 	http.HandleFunc("/info/currency", appCurrencyInfoHandler)
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(port, nil)
 }
