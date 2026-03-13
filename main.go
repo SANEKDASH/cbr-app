@@ -146,7 +146,7 @@ func fillCurrencyAPIOutput(out *currencyAPIOutput, curs CbrValCurs) error {
 func getCbrCurrencyValues(curr currencyAPIInput) (CbrValCurs, error) {
 	body, err := getCbrCurrencyXMLBody(curr)
 	if err != nil {
-		log.Printf("failed to get CBR currency XML body: %v\n")
+		log.Printf("failed to get CBR currency XML body: %v\n", err)
 		return CbrValCurs{}, err
 	}
 
@@ -172,7 +172,7 @@ func appCurrencyInfoHandler(w http.ResponseWriter, req *http.Request) {
 
 	values, err := getCbrCurrencyValues(input)
 	if err != nil {
-		http.Error(w, "failed to get currency values", http.StatusNoContent)
+		http.Error(w, "failed to get currency values", http.StatusInternalServerError)
 		return
 	}
 
