@@ -1,13 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"io"
-	"net/http"
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
-	//	"golang.org/x/net/html/charset"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"golang.org/x/net/html/charset"
 )
 
 type appInfo struct {
@@ -46,7 +47,6 @@ type ValCurs struct {
 
 func findCurrency(curs ValCurs, valName string) *Valute {
 	for _, v := range curs.Valutes {
-		fmt.Printf("%s\n", v.CharCode)
 		if v.CharCode == valName {
 			return &v
 		}
@@ -82,16 +82,25 @@ func getCbrCurrencyXMLBody(curr *currencyAPIInput) ([]byte, error) {
 	return body, nil
 }
 
-func getCbrCurrencyValue(curr *currencyAPIInput) string {
+func getCbrCurrencyValues(curr *currencyAPIInput) string {
 	body, err := getCbrCurrencyXMLBody(curr)
 	if err != nil {
 		log.Printf("failed to get CBR currency XML body: %v\n")
 		return ""
 	}
 
-	fmt.Printf("%s", body);
+	var curs ValCurs
+	decoder := xml.NewDecoder(bytes.NewReader(body))
+	decoder.CharsetReader = charset.NewReaderLabel
 
-	return ""
+	err = decoder.Decode(&curs)
+	if err != nil {
+		log.Printf("failed to decode XML: %v\n", err)
+		return ""
+	}
+
+	valute := findCurrency(curs, "USD")
+	return valute.Value
 }
 
 func appCurrencyInfoHandler(w http.ResponseWriter, req *http.Request) {
@@ -103,8 +112,7 @@ func appCurrencyInfoHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	value := getCbrCurrencyValue(&input)
-	fmt.Printf("value %v\n", value)
+	values := getCbrCurrencyValues(&input)
 }
 
 
