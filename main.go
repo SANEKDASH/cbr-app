@@ -7,6 +7,7 @@ import (
 	"strings"
 	"strconv"
 	"io"
+	"fmt"
 	"log"
 	"net/http"
 	"golang.org/x/net/html/charset"
@@ -70,8 +71,8 @@ func findCurrency(curs CbrValCurs, valName string) *CbrValute {
 }
 
 func getCbrCurrencyXMLBody(curr currencyAPIInput) ([]byte, error) {
-	// need to add date
-	endpoint := "http://www.cbr.ru/scripts/XML_daily.asp?date_req="
+	endpoint := fmt.Sprintf("http://www.cbr.ru/scripts/XML_daily.asp?date_req=%s",
+		strings.ReplaceAll(curr.Date, "-", "/"))
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
