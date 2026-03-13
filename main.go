@@ -70,9 +70,33 @@ func findCbrValute(curs CbrValCurs, valName string) *CbrValute {
 	return nil
 }
 
-func getCbrCurrencyXMLBody(curr currencyAPIInput) ([]byte, error) {
-	endpoint := fmt.Sprintf("http://www.cbr.ru/scripts/XML_daily.asp?date_req=%s",
-		strings.ReplaceAll(curr.Date, "-", "/"))
+const cbrDefaultCurrencyEndpoint = "http://www.cbr.ru/scripts/XML_daily.asp"
+
+func getCbrEndpoint(date string) (string , error) {
+	if date == "" {
+		return cbrDefaultCurrencyEndpoint, nil
+	}
+
+	dateParts := strings.Split(date, "-")
+	if len(dateParts) != 3 {
+		return "", fmt.Errorf("invalid date format: %s", date)
+	}
+
+	year := dateParts[0]
+	month := dateParts[1]
+	day := dateParts[2]
+
+	cbrDate := fmt.Sprintf("%s/%s/%s", day, month, year)
+	return fmt.Sprintf("%s?date_req=%s",
+		cbrDefaultCurrencyEndpoint, cbrDate), nil
+}
+
+func getCbrCurrencyXMLBody(input currencyAPIInput) ([]byte, error) {
+	endpoint, err := getCbrEndpoint(input.Date)
+	if err != nil {
+		log.Printf("failed to create endpoint for CBR: %v", err)
+		return nil, err
+	}
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
@@ -90,7 +114,7 @@ func getCbrCurrencyXMLBody(curr currencyAPIInput) ([]byte, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("failed to read CBR response body: %v")
+		log.Printf("failed to read CBR response body: %v", err)
 		return nil, err
 	}
 
@@ -141,12 +165,10 @@ func getCbrCurrencyValues(curr currencyAPIInput) (CbrValCurs, error) {
 
 func appCurrencyInfoHandler(w http.ResponseWriter, req *http.Request) {
 	var input currencyAPIInput
-	err := json.NewDecoder(req.Body).Decode(&input)
+	input.Currency = req.URL.Query().Get("currency")
+	input.Date = req.URL.Query().Get("date")
 
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	log.Printf("currency %s, date %s\n", input.Currency, input.Date)
 
 	values, err := getCbrCurrencyValues(input)
 	if err != nil {
