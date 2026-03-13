@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"encoding/json"
 	"encoding/xml"
+	//	"golang.org/x/net/html/charset"
 )
 
 type appInfo struct {
@@ -54,7 +55,42 @@ func findCurrency(curs ValCurs, valName string) *Valute {
 	return nil
 }
 
-func getCurrencyValue(curr *currencyAPIInput) string {
+func getCbrCurrencyXMLBody(curr *currencyAPIInput) ([]byte, error) {
+	// need to add date
+	endpoint := "http://www.cbr.ru/scripts/XML_daily.asp?date_req="
+
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		log.Printf("failed to create GET request for CBR %v", err)
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Printf("failed to get http response: %v", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("failed to read CBR response body: %v")
+		return nil, err
+	}
+
+	return body, nil
+}
+
+func getCbrCurrencyValue(curr *currencyAPIInput) string {
+	body, err := getCbrCurrencyXMLBody(curr)
+	if err != nil {
+		log.Printf("failed to get CBR currency XML body: %v\n")
+		return ""
+	}
+
+	fmt.Printf("%s", body);
+
 	return ""
 }
 
@@ -67,7 +103,8 @@ func appCurrencyInfoHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	value := getCurrencyValue(&input)
+	value := getCbrCurrencyValue(&input)
+	fmt.Printf("value %v\n", value)
 }
 
 
