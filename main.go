@@ -20,7 +20,14 @@ func main() {
 	}
 
 	author := os.Getenv("AUTHOR")
+	if author == "" {
+		author = "a.dashchinsky"
+	}
+
 	version := os.Getenv("VERSION")
+	if version == "" {
+		version = "1.0.0"
+	}
 
 	appInfo.Author = author
 	appInfo.Version = version
