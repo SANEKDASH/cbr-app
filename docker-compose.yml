@@ -1,5 +1,6 @@
 services:
   app:
+    container-name: rest-api-app
     build:
       context: ./
     environment:
@@ -7,5 +8,5 @@ services:
       - AUTHOR=${AUTHOR:-a.dashchinsky}
       - VERSION=${VERSION:-1.0.0}
     ports:
-      - "${PORT:-8000}:8000"
+      - "${PORT:-8000}:${PORT:-8000}"
     image: rest-api-app:latest
