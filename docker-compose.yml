@@ -4,6 +4,9 @@ services:
     build:
       context: ./
 
+    image: sanekdash/rest-api-app:latest
+    pull_policy: build
+
     user: "10001:10001"
     read_only: true
 
@@ -25,8 +28,6 @@ services:
 
     networks:
       - rest-api-app-net
-
-    image: rest-api-app:latest
 
 networks:
   rest-api-app-net:
