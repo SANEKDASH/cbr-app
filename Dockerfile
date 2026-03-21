@@ -15,5 +15,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 
 FROM alpine:3.23
 
-COPY --from=builder /app/rest_api_app /rest_api_app
-ENTRYPOINT ["/rest_api_app"]
+RUN adduser -D -u 10001 -h /home/appuser appuser
+WORKDIR /home/appuser
+COPY --from=builder /app/rest_api_app .
+USER appuser:appuser
+
+ENTRYPOINT ["rest_api_app"]
