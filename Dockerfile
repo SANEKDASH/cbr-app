@@ -13,11 +13,14 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -o rest_api_app
 
-FROM alpine:3.23
+FROM alpine:3.23.3
+
+RUN apk update && apk upgrade
 
 RUN adduser -D -u 10001 -h /home/appuser appuser
 WORKDIR /home/appuser
+
 COPY --from=builder /app/rest_api_app .
 USER appuser:appuser
 
-ENTRYPOINT ["rest_api_app"]
+ENTRYPOINT ["/home/appuser/rest_api_app"]
