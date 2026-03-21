@@ -1,12 +1,34 @@
 services:
   app:
-    container-name: rest-api-app
+    container_name: rest-api-app
     build:
       context: ./
+
+    user: "10001:10001"
+    read_only: true
+
+    security_opt:
+      - "no-new-privileges:true"
+
+    cap_drop: ["ALL"]
+
     environment:
       - PORT=${PORT:-8000}
       - AUTHOR=${AUTHOR:-a.dashchinsky}
       - VERSION=${VERSION:-1.0.0}
+
     ports:
       - "${PORT:-8000}:${PORT:-8000}"
+
+    mem_limit: 6m
+    cpus: "0.2"
+
+    networks:
+      - rest-api-app-net
+
     image: rest-api-app:latest
+
+networks:
+  rest-api-app-net:
+    driver: bridge
+    internal: false
