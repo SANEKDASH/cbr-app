@@ -5,3 +5,6 @@
 Dockerfile
 README.md
 docker-compose.yml
+sbom.json
+trivy-report.json
+FINDINGS.md
