@@ -9,3 +9,4 @@ sbom.json
 trivy-report.json
 FINDINGS.md
 .gitlab-ci.yml
+.dockerignore
