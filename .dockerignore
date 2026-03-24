@@ -1,0 +1,12 @@
+.env.example
+.env
+.git
+.gitignore
+Dockerfile
+README.md
+docker-compose.yml
+sbom.json
+trivy-report.json
+FINDINGS.md
+.gitlab-ci.yml
+.dockerignore
