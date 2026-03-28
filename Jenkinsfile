@@ -3,14 +3,25 @@ pipeline {
 
     options {
 	gitLabConnection('rest-api-app-gitlab-connection')
-}
+    }
 
     stages {
 	stage('lint') {
 	    steps {
 		updateGitlabCommitStatus name: 'lint', state: 'running'
 
-		echo 'lint stage'
+		script {
+		    def lintRes = sh(script: ''' docker run --rm \
+				     -v ${WORKSPACE}:${WORKSPACE} \
+				     -w ${WORKSPACE} \
+				     hadolint/hadolint:latest-debian \
+				     hadolint Dockerfile ''',
+				     returnStatus: true)
+
+		    if (lintRes != 0) {
+			error('Hadolint check failed')
+		    }
+		}
 	    }
 	    post {
 		success {
@@ -18,6 +29,22 @@ pipeline {
 		}
 		failure {
 		    updateGitlabCommitStatus name: 'lint', state: 'failed'
+		}
+	    }
+
+	}
+
+
+	stage('build') {
+	    steps {
+		echo 'build stage'
+	    }
+	    post {
+		success {
+		    updateGitlabCommitStatus name: 'build', state: 'success'
+		}
+		failure {
+		    updateGitlabCommitStatus name: 'build', state: 'failed'
 		}
 	    }
 
@@ -35,21 +62,6 @@ pipeline {
 		}
 		failure {
 		    updateGitlabCommitStatus name: 'test', state: 'failed'
-		}
-	    }
-
-	}
-
-	stage('build') {
-	    steps {
-		echo 'build stage'
-	    }
-	    post {
-		success {
-		    updateGitlabCommitStatus name: 'build', state: 'success'
-		}
-		failure {
-		    updateGitlabCommitStatus name: 'build', state: 'failed'
 		}
 	    }
 
