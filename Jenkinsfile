@@ -19,8 +19,11 @@ pipeline {
 				     returnStatus: true)
 
 		    if (lintRes != 0) {
-			error('Hadolint check failed')
+			error('Hadolint check failed.')
+		    } else {
+			echo 'Hadolint check passed.'
 		    }
+
 		}
 	    }
 	    post {
@@ -37,7 +40,8 @@ pipeline {
 
 	stage('build') {
 	    steps {
-		echo 'build stage'
+		updateGitlabCommitStatus name: 'build', state: 'running'
+		sh 'docker compose build'
 	    }
 	    post {
 		success {
@@ -51,20 +55,50 @@ pipeline {
 	}
 
 	stage('test') {
-	    steps {
-		updateGitlabCommitStatus name: 'test', state: 'running'
-
-		echo 'test stage'
+	    environment {
+		PORT = '8090'
+		AUTHOR = 'a.dashchinsky'
+		VERSION = '1.0.0'
 	    }
-	    post {
-		success {
-		    updateGitlabCommitStatus name: 'test', state: 'success'
+	    parallel {
+		stage ('/info') {
+		    steps {
+			updateGitlabCommitStatus name: '/info', state: 'running'
+			sh 'docker compose down --volumes --remove-orphans'
+			sh 'docker compose up -d'
+			sh 'chmod +x ./tests/info/test_info.sh'
+			sh './tests/info/test_info.sh'
+		    }
+		    post {
+			success {
+			    updateGitlabCommitStatus name: 'info', state: 'success'
+			}
+			failure {
+			    updateGitlabCommitStatus name: 'info', state: 'failed'
+			}
+			always {
+			    sh 'docker compose down --volumes --remove-orphans'
+			}
+		    }
 		}
-		failure {
-		    updateGitlabCommitStatus name: 'test', state: 'failed'
+		stage ('/info/currency') {
+		    steps {
+			echo 'running /info/currency tests'
+		    }
+		    post {
+			success {
+			    updateGitlabCommitStatus name: '/info/currency', state: 'success'
+			}
+			failure {
+			    updateGitlabCommitStatus name: '/info/currency', state: 'failed'
+			}
+			always {
+			    sh 'docker compose down --volumes --remove-orphans'
+			}
+		    }
+
 		}
 	    }
-
 	}
 
 	stage('deploy') {
