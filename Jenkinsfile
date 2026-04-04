@@ -8,13 +8,11 @@ pipeline {
     }
 
     environment {
-	DOCKERHUB_USER = 'sanekdash'
-	DOCKERHUB_REPO = 'rest-api-app'
+	DOCKER_CREDS = credentials('docker-hub-creds')
 
+	DOCKER_HUB_REPO = 'rest-api-app'
 	GIT_SHA = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-
-	DOCKER_IMAGE_TAG = "${env.BUILD_NUMBER}"
-	DOCKER_IMAGE_NAME = "${DOCKERHUB_USER}/${DOCKERHUB_REPO}:${GIT_SHA}"
+	DOCKER_IMAGE_NAME = "${DOCKER_CREDS_USR}/${DOCKERHUB_REPO}:${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -22,7 +20,6 @@ pipeline {
 	    agent {
 		docker {
 		    image 'hadolint/hadolint:v2.14.0-debian'
-		    args '-u root --entrypoint=""'
 		}
 	    }
 	    steps {
@@ -34,20 +31,10 @@ pipeline {
 
 	stage('build') {
 	    steps {
-		updateGitlabCommitStatus name: 'build', state: 'running'
-		sh 'docker build -t ${DOCKER_IMAGE_NAME} .'
-	    }
-
-	    post {
-		success {
-		    updateGitlabCommitStatus name: 'build', state: 'success'
-		}
-
-		failure {
-		    updateGitlabCommitStatus name: 'build', state: 'failed'
+		gitlabCommitStatus('build') {
+		    sh 'docker build -t "${DOCKER_IMAGE_NAME}" .'
 		}
 	    }
-
 	}
 
 	stage('test') {
@@ -60,15 +47,9 @@ pipeline {
 	    stages {
 		stage('setup') {
 		    steps {
-			sh 'docker compose down --volumes --remove-orphans'
-			sh 'docker compose up -d'
-		    }
-		    post {
-			success {
-			    updateGitlabCommitStatus name: 'setup', state: 'success'
-			}
-			failure {
-			    updateGitlabCommitStatus name: 'setup', state: 'failed'
+			gitlabCommitStatus('setup') {
+			    sh 'docker compose down --volumes --remove-orphans'
+			    sh 'docker compose up -d'
 			}
 		    }
 		}
@@ -77,38 +58,23 @@ pipeline {
 		    parallel {
 			stage ('/info') {
 			    steps {
-				updateGitlabCommitStatus name: '/info', state: 'running'
-				sh 'chmod +x ./tests/info/test_info.sh'
-				sh './tests/info/test_info.sh'
-			    }
-			    post {
-				success {
-				    updateGitlabCommitStatus name: 'info', state: 'success'
-				}
-				failure {
-				    updateGitlabCommitStatus name: 'info', state: 'failed'
+				gitlabCommitStatus('/info') {
+				    sh 'chmod +x ./tests/info/test_info.sh'
+				    sh './tests/info/test_info.sh'
 				}
 			    }
 			}
 			stage ('/info/currency') {
 			    steps {
-				updateGitlabCommitStatus name: '/info/currency', state: 'running'
-				sh 'chmod +x ./tests/currency/test_currency.sh'
-				sh './tests/currency/test_currency.sh'
-			    }
-			    post {
-				success {
-				    updateGitlabCommitStatus name: '/info/currency', state: 'success'
-				}
-				failure {
-				    updateGitlabCommitStatus name: '/info/currency', state: 'failed'
+				gitlabCommitStatus('/info/currency') {
+				    sh 'chmod +x ./tests/currency/test_currency.sh'
+				    sh './tests/currency/test_currency.sh'
 				}
 			    }
 			}
 		    }
 		}
 	    }
-
 	    post {
 		always {
 		    sh 'docker compose down --volumes --remove-orphans'
@@ -121,28 +87,12 @@ pipeline {
 		branch 'master'
 	    }
 	    steps {
-		updateGitlabCommitStatus name: 'docker-hub push', state: 'running'
-		script {
-		    withCredentials([usernamePassword(
-			credentialsId: 'docker-hub-creds',
-			usernameVariable: 'DOCKER_USER',
-			passwordVariable: 'DOCKER_PASS')]) {
-			sh '''
-	                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-        	            docker push ${DOCKER_IMAGE_NAME}
-                	    docker logout
-                	'''
+		gitlabCommitStatus('deploy') {
+		    script {
+			docker.withRegistry('', 'docker-hub-creds') {
+			    sh 'docker push "${DOCKER_IMAGE_NAME}"'
+			}
 		    }
-		}
-	    }
-
-	    post {
-		success {
-		    updateGitlabCommitStatus name: 'deploy', state: 'success'
-		}
-
-		failure {
-		    updateGitlabCommitStatus name: 'deploy', state: 'failed'
 		}
 	    }
 	}
