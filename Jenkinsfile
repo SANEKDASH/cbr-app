@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+	label 'docker && linux'
+    }
 
     options {
 	gitLabConnection('rest-api-app-gitlab-connection')
