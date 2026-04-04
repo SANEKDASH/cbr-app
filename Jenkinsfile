@@ -134,10 +134,10 @@ pipeline {
 	    }
 	}
 
-	stage('docker-hub push') {
-	    // when {
-	    // 	branch 'master'
-	    // }
+	stage('deploy') {
+	    when {
+		branch 'master'
+	    }
 	    steps {
 		updateGitlabCommitStatus name: 'docker-hub push', state: 'running'
 		script {
@@ -164,26 +164,5 @@ pipeline {
 		}
 	    }
 	}
-
-	stage('deploy') {
-	    // when {
-	    // 	branch 'master'
-	    // }
-
-	    steps {
-		echo 'deploy stage'
-	    }
-
-	    post {
-		success {
-		    updateGitlabCommitStatus name: 'deploy', state: 'success'
-		}
-
-		failure {
-		    updateGitlabCommitStatus name: 'deploy', state: 'failed'
-		}
-	    }
-	}
-
     }
 }
