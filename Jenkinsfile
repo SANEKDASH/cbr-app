@@ -19,35 +19,17 @@ pipeline {
 
     stages {
 	stage('lint') {
+	    agent {
+		docker {
+		    image 'hadolint/hadolint:v2.14.0-debian'
+		    args '-u root --entrypoint=""'
+		}
+	    }
 	    steps {
-		updateGitlabCommitStatus name: 'lint', state: 'running'
-
-		script {
-		    def lintRes = sh(script: ''' docker run --rm \
-				     -v ${WORKSPACE}:${WORKSPACE} \
-				     -w ${WORKSPACE} \
-				     hadolint/hadolint:latest-debian \
-				     hadolint Dockerfile ''',
-				     returnStatus: true)
-
-		    if (lintRes != 0) {
-			error('Hadolint check failed.')
-		    } else {
-			echo 'Hadolint check passed.'
-		    }
-
+		gitlabCommitStatus('lint') {
+		    sh 'hadolint Dockerfile'
 		}
 	    }
-	    post {
-		success {
-		    updateGitlabCommitStatus name: 'lint', state: 'success'
-		}
-
-		failure {
-		    updateGitlabCommitStatus name: 'lint', state: 'failed'
-		}
-	    }
-
 	}
 
 	stage('build') {
