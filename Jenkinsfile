@@ -6,7 +6,6 @@ pipeline {
     options {
 	gitLabConnection('rest-api-app-gitlab-connection')
 	timeout(time: 5, unit: "MINUTES")
-	ansiColor('xterm')
 	disableConcurrentBuilds()
     }
 
@@ -59,16 +58,16 @@ pipeline {
 			stage ('/info') {
 			    steps {
 				gitlabCommitStatus('/info') {
-				    sh 'chmod +x ./tests/info/test_info.sh'
-				    sh './tests/info/test_info.sh'
+				    sh "chmod +x ${WORKSPACE}/tests/info/test_info.sh"
+				    sh "${WORKSPACE}/tests/info/test_info.sh"
 				}
 			    }
 			}
 			stage ('/info/currency') {
 			    steps {
 				gitlabCommitStatus('/info/currency') {
-				    sh 'chmod +x ./tests/currency/test_currency.sh'
-				    sh './tests/currency/test_currency.sh'
+				    sh "chmod +x ${WORKSPACE}/tests/currency/test_currency.sh"
+				    sh "${WORKSPACE}/tests/currency/test_currency.sh"
 				}
 			    }
 			}
