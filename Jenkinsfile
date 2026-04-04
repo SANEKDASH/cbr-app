@@ -30,6 +30,7 @@ pipeline {
 		success {
 		    updateGitlabCommitStatus name: 'lint', state: 'success'
 		}
+
 		failure {
 		    updateGitlabCommitStatus name: 'lint', state: 'failed'
 		}
@@ -37,16 +38,17 @@ pipeline {
 
 	}
 
-
 	stage('build') {
 	    steps {
 		updateGitlabCommitStatus name: 'build', state: 'running'
 		sh 'docker compose build'
 	    }
+
 	    post {
 		success {
 		    updateGitlabCommitStatus name: 'build', state: 'success'
 		}
+
 		failure {
 		    updateGitlabCommitStatus name: 'build', state: 'failed'
 		}
@@ -60,43 +62,62 @@ pipeline {
 		AUTHOR = 'a.dashchinsky'
 		VERSION = '1.0.0'
 	    }
-	    parallel {
-		stage ('/info') {
+
+	    stages {
+		stage('setup') {
 		    steps {
-			updateGitlabCommitStatus name: '/info', state: 'running'
 			sh 'docker compose down --volumes --remove-orphans'
 			sh 'docker compose up -d'
-			sh 'chmod +x ./tests/info/test_info.sh'
-			sh './tests/info/test_info.sh'
 		    }
 		    post {
 			success {
-			    updateGitlabCommitStatus name: 'info', state: 'success'
+			    updateGitlabCommitStatus name: 'setup', state: 'success'
 			}
 			failure {
-			    updateGitlabCommitStatus name: 'info', state: 'failed'
-			}
-			always {
-			    sh 'docker compose down --volumes --remove-orphans'
+			    updateGitlabCommitStatus name: 'setup', state: 'failed'
 			}
 		    }
 		}
-		stage ('/info/currency') {
-		    steps {
-			echo 'running /info/currency tests'
-		    }
-		    post {
-			success {
-			    updateGitlabCommitStatus name: '/info/currency', state: 'success'
-			}
-			failure {
-			    updateGitlabCommitStatus name: '/info/currency', state: 'failed'
-			}
-			always {
-			    sh 'docker compose down --volumes --remove-orphans'
-			}
-		    }
 
+		stage('run tests') {
+		    parallel {
+			stage ('/info') {
+			    steps {
+				updateGitlabCommitStatus name: '/info', state: 'running'
+				sh 'chmod +x ./tests/info/test_info.sh'
+				sh './tests/info/test_info.sh'
+			    }
+			    post {
+				success {
+				    updateGitlabCommitStatus name: 'info', state: 'success'
+				}
+				failure {
+				    updateGitlabCommitStatus name: 'info', state: 'failed'
+				}
+			    }
+			}
+			stage ('/info/currency') {
+			    steps {
+				updateGitlabCommitStatus name: '/info/currency', state: 'running'
+				sh 'chmod +x ./tests/currency/test_currency.sh'
+				sh './tests/currency/test_currency.sh'
+			    }
+			    post {
+				success {
+				    updateGitlabCommitStatus name: '/info/currency', state: 'success'
+				}
+				failure {
+				    updateGitlabCommitStatus name: '/info/currency', state: 'failed'
+				}
+			    }
+			}
+		    }
+		}
+	    }
+
+	    post {
+		always {
+		    sh 'docker compose down --volumes --remove-orphans'
 		}
 	    }
 	}
@@ -105,13 +126,16 @@ pipeline {
 	    when {
 		branch 'master'
 	    }
+
 	    steps {
 		echo 'deploy stage'
 	    }
+
 	    post {
 		success {
 		    updateGitlabCommitStatus name: 'deploy', state: 'success'
 		}
+
 		failure {
 		    updateGitlabCommitStatus name: 'deploy', state: 'failed'
 		}

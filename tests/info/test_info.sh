@@ -9,6 +9,7 @@ compare_values() {
     if [[ "${val}" != "${ref}" ]]; then
 	echo "Error: incorrect ${val_name}: ${val}"
 	echo "Expected: ${ref}"
+	echo "Got: ${val}"
 	((FAILED++))
     else
 	echo "${val_name}: Correct."
