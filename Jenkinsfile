@@ -7,6 +7,16 @@ pipeline {
 	gitLabConnection('rest-api-app-gitlab-connection')
     }
 
+    environment {
+	DOCKERHUB_USER = 'sanekdash'
+	DOCKERHUB_REPO = 'rest-api-app'
+
+	GIT_SHA = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+
+	DOCKER_IMAGE_TAG = "${env.BUILD_NUMBER}"
+	DOCKER_IMAGE_NAME = "${DOCKERHUB_USER}/${DOCKERHUB_REPO}:${GIT_SHA}"
+    }
+
     stages {
 	stage('lint') {
 	    steps {
@@ -43,7 +53,7 @@ pipeline {
 	stage('build') {
 	    steps {
 		updateGitlabCommitStatus name: 'build', state: 'running'
-		sh 'docker compose build'
+		sh 'docker build -t ${DOCKER_IMAGE_NAME} .'
 	    }
 
 	    post {
@@ -124,10 +134,41 @@ pipeline {
 	    }
 	}
 
-	stage('deploy') {
-	    when {
-		branch 'master'
+	stage('docker-hub push') {
+	    // when {
+	    // 	branch 'master'
+	    // }
+	    steps {
+		updateGitlabCommitStatus name: 'docker-hub push', state: 'running'
+		script {
+		    withCredentials([usernamePassword(
+			credentialsId: 'docker-hub-creds',
+			usernameVariable: 'DOCKER_USER',
+			passwordVariable: 'DOCKER_PASS')]) {
+			sh '''
+	                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+        	            docker push ${DOCKER_IMAGE_NAME}
+                	    docker logout
+                	'''
+		    }
+		}
 	    }
+
+	    post {
+		success {
+		    updateGitlabCommitStatus name: 'deploy', state: 'success'
+		}
+
+		failure {
+		    updateGitlabCommitStatus name: 'deploy', state: 'failed'
+		}
+	    }
+	}
+
+	stage('deploy') {
+	    // when {
+	    // 	branch 'master'
+	    // }
 
 	    steps {
 		echo 'deploy stage'
