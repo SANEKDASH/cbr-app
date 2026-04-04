@@ -75,11 +75,6 @@ pipeline {
 		    }
 		}
 	    }
-	    post {
-		always {
-		    sh 'docker compose down --volumes --remove-orphans'
-		}
-	    }
 	}
 
 	stage('deploy') {
@@ -97,4 +92,15 @@ pipeline {
 	    }
 	}
     }
+
+    post {
+	always {
+	    sh 'docker compose down --volumes --remove-orphans'
+	    sh 'docker rmi "${DOCKER_IMAGE_NAME}" || true'
+	}
+	cleanup {
+	    cleanWs deleteDirs: true, notFailBuild: true
+	}
+    }
+
 }
