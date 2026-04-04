@@ -19,7 +19,7 @@ compare_values() {
 INFO_ENDPOINT="http://localhost:${PORT:-8080}/info"
 
 REF_VERSION=${VERSION:-"1.0.0"}
-REF_AUTHOR=${AUTHOR:-"Alex Dash"}
+REF_AUTHOR=${AUTHOR:-"a.dashchinsky"}
 REF_SERVICE="currency"
 
 echo "Processing GET request on ${INFO_ENDPOINT} endpoint"
