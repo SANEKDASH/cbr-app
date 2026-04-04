@@ -10,21 +10,18 @@ pipeline {
     environment {
 	DOCKER_CREDS = credentials('docker-hub-creds')
 
-	DOCKER_HUB_REPO = 'rest-api-app'
+	DOCKER_HUBREPO = 'rest-api-app'
 	GIT_SHA = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
 	DOCKER_IMAGE_NAME = "${DOCKER_CREDS_USR}/${DOCKERHUB_REPO}:${env.BUILD_NUMBER}"
     }
 
     stages {
 	stage('lint') {
-	    agent {
-		docker {
-		    image 'hadolint/hadolint:v2.14.0-debian'
-		}
-	    }
 	    steps {
-		gitlabCommitStatus('lint') {
-		    sh 'hadolint Dockerfile'
+		script {
+		    docker.image('hadolint/hadolint:v2.14.0-debian').inside {
+			sh 'hadolint Dockerfile'
+		    }
 		}
 	    }
 	}
