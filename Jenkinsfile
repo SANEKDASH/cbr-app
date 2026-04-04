@@ -5,6 +5,9 @@ pipeline {
 
     options {
 	gitLabConnection('rest-api-app-gitlab-connection')
+	timeout(time: 5, unit: "MINUTES")
+	ansiColor('xterm')
+	disableConcurrentBuilds()
     }
 
     environment {
