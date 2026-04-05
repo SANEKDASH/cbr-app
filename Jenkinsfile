@@ -15,7 +15,6 @@ pipeline {
 	DOCKERHUB_REPO = 'rest-api-app'
 	GIT_SHA = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
 	DOCKER_IMAGE_NAME = "${DOCKER_CREDS_USR}/${DOCKERHUB_REPO}:${GIT_SHA}"
-	DOCKER_IMAGE_ARCHIVE_NAME = "image-${GIT_SHA}.tar.gz"
 
 	PORT = '8090'
 	AUTHOR = 'a.dashchinsky'
