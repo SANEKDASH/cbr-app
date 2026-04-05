@@ -58,7 +58,6 @@ pipeline {
 			stage ('/info') {
 			    steps {
 				gitlabCommitStatus('/info') {
-				    sh "chmod +x ${WORKSPACE}/tests/info/test_info.sh"
 				    sh "${WORKSPACE}/tests/info/test_info.sh"
 				}
 			    }
@@ -66,7 +65,6 @@ pipeline {
 			stage ('/info/currency') {
 			    steps {
 				gitlabCommitStatus('/info/currency') {
-				    sh "chmod +x ${WORKSPACE}/tests/currency/test_currency.sh"
 				    sh "${WORKSPACE}/tests/currency/test_currency.sh"
 				}
 			    }
