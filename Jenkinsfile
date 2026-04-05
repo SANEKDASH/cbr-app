@@ -14,7 +14,7 @@ pipeline {
 
 	DOCKER_HUBREPO = 'rest-api-app'
 	GIT_SHA = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-	DOCKER_IMAGE_NAME = "${DOCKER_CREDS_USR}/${DOCKERHUB_REPO}:${env.BUILD_NUMBER}"
+	DOCKER_IMAGE_NAME = "${DOCKER_CREDS_USR}/${DOCKERHUB_REPO}:${GIT_SHA}"
     }
 
     stages {
