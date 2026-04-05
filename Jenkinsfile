@@ -20,9 +20,11 @@ pipeline {
     stages {
 	stage('lint') {
 	    steps {
-		script {
-		    docker.image('hadolint/hadolint:v2.14.0-debian').inside {
-			sh 'hadolint Dockerfile'
+		gitlabCommitStatus('lint') {
+		    script {
+			docker.image('hadolint/hadolint:v2.14.0-debian').inside {
+			    sh 'hadolint Dockerfile'
+			}
 		    }
 		}
 	    }
