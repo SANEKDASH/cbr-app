@@ -15,6 +15,11 @@ pipeline {
 	DOCKERHUB_REPO = 'rest-api-app'
 	GIT_SHA = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
 	DOCKER_IMAGE_NAME = "${DOCKER_CREDS_USR}/${DOCKERHUB_REPO}:${GIT_SHA}"
+	DOCKER_IMAGE_ARCHIVE_NAME = "image-${GIT_SHA}.tar.gz"
+
+	PORT = '8090'
+	AUTHOR = 'a.dashchinsky'
+	VERSION = "${GIT_SHA}"
     }
 
     stages {
@@ -39,12 +44,6 @@ pipeline {
 	}
 
 	stage('test') {
-	    environment {
-		PORT = '8090'
-		AUTHOR = 'a.dashchinsky'
-		VERSION = '1.0.0'
-	    }
-
 	    stages {
 		stage('setup') {
 		    steps {
@@ -76,16 +75,50 @@ pipeline {
 	    }
 	}
 
-	stage('deploy') {
+	stage('dockerhub push') {
 	    when {
 		branch 'master'
 	    }
 	    steps {
-		gitlabCommitStatus('deploy') {
+		gitlabCommitStatus('dockerhub push') {
 		    script {
 			docker.withRegistry('', 'docker-hub-creds') {
 			    sh 'docker push "${DOCKER_IMAGE_NAME}"'
 			}
+		    }
+		}
+	    }
+	}
+
+	stage('deploy') {
+	    environment {
+		PRODUCTION_HOST = credentials('PRODUCTION_HOST')
+		PRODUCTION_USER = credentials('PRODUCTION_USER')
+		DEPLOY_PATH = credentials('PRODUCTION_REST_API_APP_DEPLOY_PATH')
+	    }
+	    when {
+		branch 'master'
+	    }
+
+	    steps {
+		gitlabCommitStatus('deploy') {
+		    sshagent(['agent-deploy-key']) {
+			sh '''
+			    scp ${WORKSPACE}/docker-compose.yml ${PRODUCTION_USER}@${PRODUCTION_HOST}:${DEPLOY_PATH}/
+
+			    ssh ${PRODUCTION_USER}@${PRODUCTION_HOST} "
+
+				docker pull ${DOCKER_IMAGE_NAME}
+
+				export DOCKER_IMAGE_NAME=${DOCKER_IMAGE_NAME}
+				export AUTHOR=${AUTHOR}
+				export PORT=${PORT}
+				export VERSION="${GIT_SHA}"
+
+				docker compose -f ${DEPLOY_PATH}/docker-compose.yml down --volumes --remove-orphans
+				docker compose -f ${DEPLOY_PATH}/docker-compose.yml up -d
+			    "
+			'''
 		    }
 		}
 	    }
