@@ -1,7 +1,5 @@
 pipeline {
-    agent {
-	label 'docker && linux'
-    }
+    agent any
 
     options {
 	gitLabConnection('rest-api-app-gitlab-connection')
@@ -23,6 +21,7 @@ pipeline {
 
     stages {
 	stage('lint') {
+	    agent { label 'docker && staging' }
 	    steps {
 		gitlabCommitStatus('lint') {
 		    script {
@@ -35,6 +34,7 @@ pipeline {
 	}
 
 	stage('build') {
+	    agent { label 'docker && staging' }
 	    steps {
 		gitlabCommitStatus('build') {
 		    sh 'docker build -t "${DOCKER_IMAGE_NAME}" .'
@@ -43,6 +43,7 @@ pipeline {
 	}
 
 	stage('test') {
+	    agent { label 'docker && staging' }
 	    stages {
 		stage('setup') {
 		    steps {
@@ -75,9 +76,11 @@ pipeline {
 	}
 
 	stage('dockerhub push') {
-	    when {
-		branch 'master'
-	    }
+	    agent { label 'docker && staging' }
+	    // when {
+	    // 	branch 'master'
+	    // }
+
 	    steps {
 		gitlabCommitStatus('dockerhub push') {
 		    script {
@@ -90,35 +93,28 @@ pipeline {
 	}
 
 	stage('deploy') {
+	    agent { label 'docker && production' }
+
 	    environment {
 		PRODUCTION_HOST = credentials('PRODUCTION_HOST')
 		PRODUCTION_USER = credentials('PRODUCTION_USER')
 		DEPLOY_PATH = credentials('PRODUCTION_REST_API_APP_DEPLOY_PATH')
 	    }
-	    when {
-		branch 'master'
-	    }
+
+	    // when {
+	    // 	branch 'master'
+	    // }
 
 	    steps {
 		gitlabCommitStatus('deploy') {
-		    sshagent(['agent-deploy-key']) {
-			sh '''
-			    scp ${WORKSPACE}/docker-compose.yml ${PRODUCTION_USER}@${PRODUCTION_HOST}:${DEPLOY_PATH}/
-
-			    ssh ${PRODUCTION_USER}@${PRODUCTION_HOST} "
-
-				docker pull ${DOCKER_IMAGE_NAME}
-
-				export DOCKER_IMAGE_NAME=${DOCKER_IMAGE_NAME}
-				export AUTHOR=${AUTHOR}
-				export PORT=${PORT}
-				export VERSION="${GIT_SHA}"
-
-				docker compose -f ${DEPLOY_PATH}/docker-compose.yml down --volumes --remove-orphans
-				docker compose -f ${DEPLOY_PATH}/docker-compose.yml up -d
-			    "
-			'''
+		    script {
+			docker.withRegistry('', 'docker-hub-creds') {
+			    sh 'docker pull "${DOCKER_IMAGE_NAME}"'
+			}
 		    }
+
+		    sh 'docker compose -f ${WORKSPACE}/docker-compose.yml down --volumes --remove-orphans'
+		    sh 'docker compose -f ${WORKSPACE}/docker-compose.yml up -d'
 		}
 	    }
 	}
