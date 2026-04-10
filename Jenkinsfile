@@ -37,7 +37,8 @@ pipeline {
 	    agent { label 'docker && staging' }
 	    steps {
 		gitlabCommitStatus('build') {
-		    sh 'docker build -t "${DOCKER_IMAGE_NAME}" .'
+		    sh 'docker rm -f ${DOCKERHUB_REPO} || true'
+		    sh 'docker build -t ${DOCKER_IMAGE_NAME} .'
 		}
 	    }
 	}
@@ -107,6 +108,7 @@ pipeline {
 
 	    steps {
 		gitlabCommitStatus('deploy') {
+		    sh 'docker rm -f ${DOCKERHUB_REPO} || true'
 		    script {
 			docker.withRegistry('', 'docker-hub-creds') {
 			    sh 'docker pull "${DOCKER_IMAGE_NAME}"'
