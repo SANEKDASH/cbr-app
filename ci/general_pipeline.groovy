@@ -21,12 +21,29 @@ pipeline {
 
     stages {
 	stage('lint') {
-	    agent { label 'docker && staging' }
-	    steps {
-		gitlabCommitStatus('lint') {
-		    script {
-			docker.image('hadolint/hadolint:v2.14.0-debian').inside {
-			    sh 'hadolint Dockerfile'
+	    parallel {
+		stage('hadolint') {
+		    agent { label 'staging' }
+		    steps {
+			gitlabCommitStatus('lint') {
+			    script {
+				docker.image('hadolint/hadolint:v2.14.0-debian').inside {
+				    sh 'hadolint Dockerfile'
+				}
+			    }
+			}
+		    }
+		}
+
+		stage ('gosec') {
+		    agent { label 'staging'}
+		    steps {
+			gitlabCommitStatus('gosec') {
+			    script {
+				docker.image('securego/gosec:2.24.6').inside {
+				    sh 'gosec GOFLAGS="-mod=readonly" GONOSUMDB="*" -no-fail ./...'
+				}
+			    }
 			}
 		    }
 		}
@@ -34,7 +51,7 @@ pipeline {
 	}
 
 	stage('build') {
-	    agent { label 'docker && staging' }
+	    agent { label 'staging' }
 	    steps {
 		gitlabCommitStatus('build') {
 		    sh 'docker rm -f ${DOCKERHUB_REPO} || true'
@@ -44,7 +61,7 @@ pipeline {
 	}
 
 	stage('test') {
-	    agent { label 'docker && staging' }
+	    agent { label 'staging' }
 	    stages {
 		stage('setup') {
 		    steps {
@@ -77,7 +94,7 @@ pipeline {
 	}
 
 	stage('dockerhub push') {
-	    agent { label 'docker && staging' }
+	    agent { label 'staging' }
 	    when {
 	    	branch 'master'
 	    }
@@ -94,7 +111,7 @@ pipeline {
 	}
 
 	stage('deploy') {
-	    agent { label 'docker && production' }
+	    agent { label 'production' }
 
 	    environment {
 		PRODUCTION_HOST = credentials('PRODUCTION_HOST')
