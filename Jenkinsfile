@@ -77,9 +77,9 @@ pipeline {
 
 	stage('dockerhub push') {
 	    agent { label 'docker && staging' }
-	    // when {
-	    // 	branch 'master'
-	    // }
+	    when {
+	    	branch 'master'
+	    }
 
 	    steps {
 		gitlabCommitStatus('dockerhub push') {
@@ -101,9 +101,9 @@ pipeline {
 		DEPLOY_PATH = credentials('PRODUCTION_REST_API_APP_DEPLOY_PATH')
 	    }
 
-	    // when {
-	    // 	branch 'master'
-	    // }
+	    when {
+	    	branch 'master'
+	    }
 
 	    steps {
 		gitlabCommitStatus('deploy') {
